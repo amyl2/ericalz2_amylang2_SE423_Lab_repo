@@ -19,6 +19,11 @@
 #include "dsp.h"
 #include "fpu32/fpu_rfft.h"
 
+float x1 = 6.0;
+float x2 = 2.3;
+float x3 = 7.3;
+float x4 = 7.1;
+
 #define PI          3.1415926535897932384626433832795
 #define TWOPI       6.283185307179586476925286766559
 #define HALFPI      1.5707963267948966192313216916398
@@ -37,6 +42,14 @@ uint32_t numTimer0calls = 0;
 uint32_t numSWIcalls = 0;
 extern uint32_t numRXA;
 uint16_t UARTPrint = 0;
+int32_t numTimer2calls = 0;
+int16_t returnLED = 0;
+
+
+// Worker Functions
+void SetLEDsOnOff( int16_t LEDvalue );
+int16_t ReadSwitches( void );
+
 
 
 void main(void)
@@ -192,11 +205,11 @@ void main(void)
     // 200MHz CPU Freq,                       Period (in uSeconds)
     ConfigCpuTimer(&CpuTimer0, LAUNCHPAD_CPU_FREQUENCY, 10000);
     ConfigCpuTimer(&CpuTimer1, LAUNCHPAD_CPU_FREQUENCY, 20000);
-    ConfigCpuTimer(&CpuTimer2, LAUNCHPAD_CPU_FREQUENCY, 40000);
+    ConfigCpuTimer(&CpuTimer2, LAUNCHPAD_CPU_FREQUENCY, 1000);
 
     // Enable CpuTimer Interrupt bit TIE
-    CpuTimer0Regs.TCR.all = 0x4000;
-    CpuTimer1Regs.TCR.all = 0x4000;
+//    CpuTimer0Regs.TCR.all = 0x4000;
+//    CpuTimer1Regs.TCR.all = 0x4000;
     CpuTimer2Regs.TCR.all = 0x4000;
 
     init_serialSCIA(&SerialA,115200);
@@ -228,7 +241,7 @@ void main(void)
     while(1)
     {
         if (UARTPrint == 1 ) {
-			serial_printf(&SerialA,"Num Timer2:%ld Num SerialRX: %ld\r\n",CpuTimer2.InterruptCount,numRXA);
+			serial_printf(&SerialA,"NumTimer2 Calls:%ld Num SerialRX: %ld LED binary value:%d\r\n",numTimer2calls,numRXA,returnLED);
             UART_printfLine(1,"Timer2 Calls %ld",CpuTimer2.InterruptCount);
             UART_printfLine(2,"Num SerialRX %ld",numRXA);
             UARTPrint = 0;
@@ -236,6 +249,85 @@ void main(void)
     }
 }
 
+// Exercise 2: SetLEDsOnOff determines if the LEDs are on or off based on bit values. The function takes in a 16 bit parameter value (LEDvalue),
+// which for this code was just iterated every time the Timer 2 interrupt occurred. This allowed it to go through a variety
+// of binary numbers to turn the LEDs on and off. The function itself decides whether to turn the LED on or off based on the
+// value of the bits in this parameter value, particularly the 5 least significant bits. This is done by using a collection
+// of if statements to investigate the bits of LEDvalue. For example, to determine if the first LED should be on or off, the
+// function investigates bit 0, the least significant bit. This is done by using an AND operator between LEDvalue and 0x1,
+// 0001 in binary terms, which selects bit 0. If this results in the value being the same as 0x1 itself, bit 0 must be 1 and
+// is therefore high, meaning that the LED should be on. This is completed similarly for LEDs 2, 3, 4, and 5. If the value is
+// not equal to itself (!=) then the bit is 0, and the LED should be off.
+void SetLEDsOnOff( int16_t LEDvalue ){
+    // If bit 0 is high, turn LED 1 on
+    if ((LEDvalue & 0x1) == 0x1){
+        GpioDataRegs.GPASET.bit.GPIO22 = 1;
+    }
+    // If bit 1 is high, turn LED 2 on
+    if ((LEDvalue & 0x2) == 0x2){
+        GpioDataRegs.GPCSET.bit.GPIO94 = 1;
+    }
+    // If bit 2 is high, turn LED 3 on
+    if ((LEDvalue & 0x4) == 0x4 ){
+        GpioDataRegs.GPCSET.bit.GPIO95 = 1;
+    }
+    // If bit 3 is high, turn LED 4 on
+    if ((LEDvalue & 0x8) == 0x8 ){
+        GpioDataRegs.GPDSET.bit.GPIO97 = 1;
+    }
+
+    // If bit 4 is high, turn LED 5 on
+    if ((LEDvalue & 0x10) == 0x10 ){
+        GpioDataRegs.GPDSET.bit.GPIO111 = 1;
+    }
+
+    // If bit 0 is low, turn LED 1 off
+    if ((LEDvalue & 0x1) != 0x1){
+        GpioDataRegs.GPACLEAR.bit.GPIO22 = 1;
+    }
+    // If bit 1 is low, turn LED 2 off
+    if ((LEDvalue & 0x2) != 0x2){
+        GpioDataRegs.GPCCLEAR.bit.GPIO94 = 1;
+    }
+    // If bit 2 is low, turn LED 3 off
+    if ((LEDvalue & 0x4) != 0x4 ){
+        GpioDataRegs.GPCCLEAR.bit.GPIO95 = 1;
+    }
+    // If bit 3 is low, turn LED 4 off
+    if ((LEDvalue & 0x8) != 0x8 ){
+        GpioDataRegs.GPDCLEAR.bit.GPIO97 = 1;
+    }
+
+    // If bit 4 is low, turn LED 5 off
+    if ((LEDvalue & 0x10) != 0x10 ){
+        GpioDataRegs.GPDCLEAR.bit.GPIO111 = 1;
+    }
+}
+
+
+// Exercise 2: ReadSwitches indicates the state of the four push buttons based on a returned 16 bit integer with the 4 least significant
+// bits. This is done by checking the status of each of the four push buttons using an if statement. Note that, as each push
+// button has a pull up resistor, GP?DAT is 0 when the button is pushed. So, if the button is pushed we want to turn on the
+// LED. To do this, we made a local variable buttonReader that is originally set to 0. Every time a button is pressed, the
+// function sets the corresponding bit to one using an OR operator. The function then returns buttonReader, which will be
+// a binary that can be read later in the code to turn the LEDs on whenever the button is pressed.
+int16_t ReadSwitches( void ) {
+    int16_t buttonReader = 0;
+    if ((GpioDataRegs.GPEDAT.bit.GPIO157 == 0) ) {
+        buttonReader = buttonReader | 0x1;
+    }
+    if ((GpioDataRegs.GPEDAT.bit.GPIO158 == 0) ) {
+        buttonReader = buttonReader | 0x2;
+    }
+    if ((GpioDataRegs.GPEDAT.bit.GPIO159 == 0) ) {
+        buttonReader = buttonReader | 0x4;
+    }
+    if ((GpioDataRegs.GPFDAT.bit.GPIO160 == 0) ) {
+        buttonReader = buttonReader | 0x8;
+    }
+
+    return buttonReader;
+}
 
 // SWI_isr,  Using this interrupt as a Software started interrupt
 __interrupt void SWI_isr(void) {
@@ -288,13 +380,46 @@ __interrupt void cpu_timer1_isr(void)
 // cpu_timer2_isr CPU Timer2 ISR
 __interrupt void cpu_timer2_isr(void)
 {
+    // Iterate numTimer 2 calls by 1 every time the function is entered
+	numTimer2calls++;
+
+
+// Exercise 2
+//	SetLEDsOnOff(numTimer2calls); // Turn the LEDs on or off based on the binary number passed. See SetLEDsOnOff description for more detail
+
+//	returnLED = ReadSwitches(); // With the previous line commented out, check whether the switches are pressed or not to get the binary value
+//
+//	SetLEDsOnOff(returnLED); // Use the previously assigned returnLED value to turn the LEDs on or off
+
+
+	// Exercise 2: Every time the function is entered, set UARTPrint equal to 1
+//	UARTPrint = 1;
+
 	// Blink LaunchPad Blue LED
     GpioDataRegs.GPATOGGLE.bit.GPIO31 = 1;
 
     CpuTimer2.InterruptCount++;
-	
-	if ((CpuTimer2.InterruptCount % 10) == 0) {
+
+    // Exercise 4: nonsense functions to test the use of breakpoints. F5 can be used to proceed step by step. This can
+    // be seen by the fact that x1 will not be calculated if the code was set to a breakpoint at x3 until it is told to
+    // proceed.
+    x4 = x3 + 2.0;
+    x3 = x4 +1.3;
+    x1 = 9*x2;
+    x2 = 34*x3;
+
+//	Exercise 5: When Timer2 period is 1ms, only print every 100th time the timer interrupt occurs. 1ms is a very rapid
+    // period, so it would be unwise to print or run certain pieces of code at such a rapid rate. As such, we can slow
+    // it down using a mod 100 to make the code run every 100th time the interrupt occurs rather than every single time.
+	if ((CpuTimer2.InterruptCount % 100) == 0) {
 		UARTPrint = 1;
+		// Want these to occur at a slower rate
+	    returnLED = ReadSwitches();
+
+	    SetLEDsOnOff(returnLED);
+
 	}
+
+
 }
 
