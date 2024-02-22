@@ -55,17 +55,22 @@ float RightWheel;
 float EncWheel;
 float LeftDistance;
 float RightDistance;
-float uRight = 0;
-float uLeft = 0;
-float p_oldLeft = 0;
-float p_oldRight = 0;
-float v1 = 0;
-float v2 = 0;
+float uRight = 0.0;
+float uLeft = 0.0;
+float p_oldLeft = 0.0;
+float p_oldRight = 0.0;
+float v1 = 0.0;
+float v2 = 0.0;
 
-float Cpos = 2.0128;
-float Cneg = -1.9617;
-float Vpos = 2.3256;
-float Vneg = 2.2822;
+//float Cpos = 2.0128;
+//float Cneg = -1.9617;
+//float Vpos = 2.3256;
+//float Vneg = 2.2822;
+
+float Cpos = 2.1;
+float Cneg = -2.0;
+float Vpos = 2.4;
+float Vneg = 2.5;
 
 
 
@@ -77,68 +82,68 @@ void main(void)
     InitSysCtrl();
 
     InitGpio();
-	
-	// Blue LED on LaunchPad
+
+    // Blue LED on LaunchPad
     GPIO_SetupPinMux(31, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(31, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPASET.bit.GPIO31 = 1;
 
-	// Red LED on LaunchPad
+    // Red LED on LaunchPad
     GPIO_SetupPinMux(34, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(34, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPBSET.bit.GPIO34 = 1;
 
-	// LED1 and PWM Pin
+    // LED1 and PWM Pin
     GPIO_SetupPinMux(22, GPIO_MUX_CPU1, 5); // Setting the third value to 5 changes the GPIO to the EPWM12A setting
     GPIO_SetupPinOptions(22, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPACLEAR.bit.GPIO22 = 1;
-	
-	// LED2
+
+    // LED2
     GPIO_SetupPinMux(94, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(94, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPCCLEAR.bit.GPIO94 = 1;
 
-	// LED3
+    // LED3
     GPIO_SetupPinMux(95, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(95, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPCCLEAR.bit.GPIO95 = 1;
 
-	// LED4
+    // LED4
     GPIO_SetupPinMux(97, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(97, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPDCLEAR.bit.GPIO97 = 1;
 
-	// LED5
+    // LED5
     GPIO_SetupPinMux(111, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(111, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPDCLEAR.bit.GPIO111 = 1;
 
-	// LS7366#1 CS
+    // LS7366#1 CS
     GPIO_SetupPinMux(130, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(130, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPECLEAR.bit.GPIO130 = 1;
 
-	// LS7366#2 CS	
+    // LS7366#2 CS
     GPIO_SetupPinMux(131, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(131, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPECLEAR.bit.GPIO131 = 1;
 
-	// LS7366#3 CS
+    // LS7366#3 CS
     GPIO_SetupPinMux(25, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(25, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPACLEAR.bit.GPIO25 = 1;
 
-	// LS7366#4 CS
+    // LS7366#4 CS
     GPIO_SetupPinMux(26, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(26, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPACLEAR.bit.GPIO26 = 1;
 
-	// WIZNET RST
+    // WIZNET RST
     GPIO_SetupPinMux(27, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(27, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPACLEAR.bit.GPIO27 = 1;
 
-	//PushButton 1
+    //PushButton 1
     GPIO_SetupPinMux(157, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(157, GPIO_INPUT, GPIO_PULLUP);
 
@@ -154,7 +159,7 @@ void main(void)
     GPIO_SetupPinMux(160, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(160, GPIO_INPUT, GPIO_PULLUP);
 
-	//SPIRAM  CS  Chip Select
+    //SPIRAM  CS  Chip Select
     GPIO_SetupPinMux(19, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(19, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPASET.bit.GPIO19 = 1;
@@ -163,13 +168,13 @@ void main(void)
     GPIO_SetupPinMux(29, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(29, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPASET.bit.GPIO29 = 1;
-	
+
     //MPU9250  CS  Chip Select
     GPIO_SetupPinMux(66, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(66, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPCSET.bit.GPIO66 = 1;
-	
-	//WIZNET  CS  Chip Select
+
+    //WIZNET  CS  Chip Select
     GPIO_SetupPinMux(125, GPIO_MUX_CPU1, 0);
     GPIO_SetupPinOptions(125, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPDSET.bit.GPIO125 = 1;
@@ -323,9 +328,9 @@ void main(void)
 
     // Enable TINT0 in the PIE: Group 1 interrupt 7
     PieCtrlRegs.PIEIER1.bit.INTx7 = 1;
-	// Enable SWI in the PIE: Group 12 interrupt 9
+    // Enable SWI in the PIE: Group 12 interrupt 9
     PieCtrlRegs.PIEIER12.bit.INTx9 = 1;
-	
+
     init_eQEPs();
 
     // Enable global Interrupts and higher priority real-time debug events
@@ -345,7 +350,7 @@ void main(void)
 
 //            UART_printfLine(1,"L = %.2f R = %.2f", LeftWheel, RightWheel);
 //            UART_printfLine(2,"W = %.2f", EncWheel);
-//			serial_printf(&SerialA,"Num Timer2:%ld Num SerialRX: %ld\r\n",CpuTimer2.InterruptCount,numRXA);
+//          serial_printf(&SerialA,"Num Timer2:%ld Num SerialRX: %ld\r\n",CpuTimer2.InterruptCount,numRXA);
 //            UART_printfLine(1,"Timer2 Calls %ld",CpuTimer2.InterruptCount);
 //            UART_printfLine(2,"Num SerialRX %ld",numRXA);
             UARTPrint = 0;
@@ -358,16 +363,16 @@ void main(void)
 __interrupt void SWI_isr(void) {
 
     // These three lines of code allow SWI_isr, to be interrupted by other interrupt functions
-	// making it lower priority than all other Hardware interrupts.  
-	PieCtrlRegs.PIEACK.all = PIEACK_GROUP12;
+    // making it lower priority than all other Hardware interrupts.
+    PieCtrlRegs.PIEACK.all = PIEACK_GROUP12;
     asm("       NOP");                    // Wait one cycle
     EINT;                                 // Clear INTM to enable interrupts
-	
-	
-	
+
+
+
     // Insert SWI ISR Code here.......
-	
-	
+
+
     numSWIcalls++;
     
     DINT;
@@ -386,8 +391,8 @@ __interrupt void cpu_timer0_isr(void)
 //    }
 
     if ((numTimer0calls%5) == 0) {
-		// Blink LaunchPad Red LED
-		GpioDataRegs.GPBTOGGLE.bit.GPIO34 = 1;
+        // Blink LaunchPad Red LED
+        GpioDataRegs.GPBTOGGLE.bit.GPIO34 = 1;
     }
 
 
@@ -407,46 +412,50 @@ __interrupt void cpu_timer1_isr(void)
     RightDistance = RightWheel / 9.69;
 
     // Part 4
-    uLeft = 0;
-    uRight = 0;
+    uLeft = 0.0;
+    uRight = 0.0;
 
 
-//	uLeft = EncWheel;
-//	uRight = EncWheel;
+//  uLeft = EncWheel;
+//  uRight = EncWheel;
 
-    if ( uLeft > 10 ){
-        uLeft = 10;
+    if ( uLeft > 10.0 ){
+        uLeft = 10.0;
     }
-    if (uLeft < -10 ){
-        uLeft = -10;
-    }
-
-    if ( uRight > 10 ){
-        uRight = 10;
-    }
-    if (uRight < -10 ){
-        uRight = -10;
+    else if (uLeft < -10.0 ){
+        uLeft = -10.0;
     }
 
-    setEPWM1A(uLeft);
-    setEPWM2A(-uRight);
+    else if ( uRight > 10.0 ){
+        uRight = 10.0;
+    }
+    else if (uRight < -10.0 ){
+        uRight = -10.0;
+    }
+
 
      v1 = (LeftDistance - p_oldLeft ) / 0.001;
      v2 = (RightDistance - p_oldRight ) / 0.001;
 
-     if ( v1 > 0.0 ){
-         uLeft = uLeft + Vpos * v1 + Cpos;
+
+     if ( v1 >= 0.0 ) {
+         uLeft = uLeft + 1.02*Vpos * v1 + 1.03*Cpos;
      }
-     else {
-         uLeft = uLeft + Vneg * v1 + Cneg;
+     if(v1 < 0.0) {
+         uLeft = uLeft + 1.02*Vneg * v1 + Cneg;
+
      }
 
-     if ( v2 > 0.0 ){
-         uRight = uRight + Vpos * v2 + Cpos;
+     if ( v2 >= 0.0 ) {
+         uRight = uRight + 1.02*Vpos * v2 + 1.03*Cpos;
+
      }
-     else {
-         uRight = uRight + Vneg * v2 + Cneg;
+     if(v2 < 0.0) {
+         uRight = uRight + 1.02*Vneg * v2 + Cneg;
      }
+
+    setEPWM1A(uLeft);
+    setEPWM2A(-uRight);
 
     p_oldLeft = LeftDistance;
     p_oldRight = RightDistance;
@@ -455,14 +464,14 @@ __interrupt void cpu_timer1_isr(void)
 // cpu_timer2_isr CPU Timer2 ISR
 __interrupt void cpu_timer2_isr(void)
 {
-//	// Blink LaunchPad Blue LED
+//  // Blink LaunchPad Blue LED
 //    GpioDataRegs.GPATOGGLE.bit.GPIO31 = 1;
 //
 //    CpuTimer2.InterruptCount++;
 //
-	if ((CpuTimer2.InterruptCount % 1000) == 0) {
-		UARTPrint = 1;
-	}
+    if ((CpuTimer2.InterruptCount % 1000) == 0) {
+        UARTPrint = 1;
+    }
     if (updown == 1 ){
         EPwm12Regs.CMPA.bit.CMPA++;
         if (EPwm12Regs.CMPA.bit.CMPA == EPwm12Regs.TBPRD){
@@ -470,19 +479,19 @@ __interrupt void cpu_timer2_isr(void)
         }
     }
 
-	if (updown == 0 ){
-		EPwm12Regs.CMPA.bit.CMPA--;
-		if (EPwm12Regs.CMPA.bit.CMPA == 0 ){
-		    updown = 1;
-		}
+    if (updown == 0 ){
+        EPwm12Regs.CMPA.bit.CMPA--;
+        if (EPwm12Regs.CMPA.bit.CMPA == 0 ){
+            updown = 1;
+        }
     }
 
-	if ( updown2 == 1 ){
-	    motorcount = motorcount + 0.005;
-	    if (motorcount >= 10){
-	        updown2 = 0;
-	    }
-	}
+    if ( updown2 == 1 ){
+        motorcount = motorcount + 0.005;
+        if (motorcount >= 10){
+            updown2 = 0;
+        }
+    }
     if (updown2 == 0){
         motorcount = motorcount - 0.005;
         if (motorcount <= -10){
