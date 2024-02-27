@@ -40,6 +40,7 @@ uint32_t numSWIcalls = 0;
 extern uint32_t numRXA;
 uint16_t UARTPrint = 0;
 int32_t adcdCount = 0;
+int32_t numADCCcalls = 0;
 
 // Other Variables
 int16_t adcd0result = 0;
@@ -57,6 +58,14 @@ float adcc2degs = 0;
 float adcc3degs = 0;
 float adcc4degs = 0;
 float adcc5degs = 0;
+float sum2 = 0.0;
+float sum3 = 0.0;
+float sum4 = 0.0;
+float sum5 = 0.0;
+float zero2 = 0.0;
+float zero3 = 0.0;
+float zero4 = 0.0;
+float zero5 = 0.0;
 
 //xk is the current ADC reading, xk_1 is the ADC reading one millisecond ago, xk_2 two milliseconds ago, etc
 float xk = 0;
@@ -554,22 +563,76 @@ __interrupt void ADCD_ISR (void)
 }
 
 __interrupt void ADCC_ISR (void) {
-    adcc2result = AdccResultRegs.ADCRESULT0;
-    adcc3result = AdccResultRegs.ADCRESULT1;
-    adcc4result = AdccResultRegs.ADCRESULT2;
-    adcc5result = AdccResultRegs.ADCRESULT3;
+//    // Unzeroed readings
+//    adcc2result = AdccResultRegs.ADCRESULT0;
+//    adcc3result = AdccResultRegs.ADCRESULT1;
+//    adcc4result = AdccResultRegs.ADCRESULT2;
+//    adcc5result = AdccResultRegs.ADCRESULT3;
+//
+//    adcc2scaled = adcc2result*(3.0/4095.0);
+//    adcc3scaled = adcc3result*(3.0/4095.0);
+//    adcc4scaled = adcc4result*(3.0/4095.0);
+//    adcc5scaled = adcc5result*(3.0/4095.0);
+//
+//    adcc2degs = 400.0*adcc2scaled-492.0;
+//    adcc3degs = 100.0*adcc3scaled-123.0;
+//    adcc4degs = 100.0*adcc4scaled-123.0;
+//    adcc5degs = 400.0*adcc5scaled-492.0;
 
-    adcc2scaled = adcc2result*(3.0/4095.0);
-    adcc3scaled = adcc3result*(3.0/4095.0);
-    adcc4scaled = adcc4result*(3.0/4095.0);
-    adcc5scaled = adcc5result*(3.0/4095.0);
+    // Exercise 3
+    if ( numADCCcalls <= 1000 ){
+        adcc2result = AdccResultRegs.ADCRESULT0;
+        adcc3result = AdccResultRegs.ADCRESULT1;
+        adcc4result = AdccResultRegs.ADCRESULT2;
+        adcc5result = AdccResultRegs.ADCRESULT3;
 
-    adcc2degs = 400.0*adcc2scaled-492.0;
-    adcc3degs = 100.0*adcc3scaled-123.0;
-    adcc4degs = 100.0*adcc4scaled-123.0;
-    adcc5degs = 400.0*adcc5scaled-492.0;
+        adcc2scaled = adcc2result*(3.0/4095.0);
+        adcc3scaled = adcc3result*(3.0/4095.0);
+        adcc4scaled = adcc4result*(3.0/4095.0);
+        adcc5scaled = adcc5result*(3.0/4095.0);
+    }
+    else if ( numADCCcalls < 3000 ){
+        adcc2result = AdccResultRegs.ADCRESULT0;
+        adcc3result = AdccResultRegs.ADCRESULT1;
+        adcc4result = AdccResultRegs.ADCRESULT2;
+        adcc5result = AdccResultRegs.ADCRESULT3;
+
+        adcc2scaled = adcc2result*(3.0/4095.0);
+        adcc3scaled = adcc3result*(3.0/4095.0);
+        adcc4scaled = adcc4result*(3.0/4095.0);
+        adcc5scaled = adcc5result*(3.0/4095.0);
+
+        sum2 = sum2 + adcc2scaled;
+        sum3 = sum3 + adcc3scaled;
+        sum4 = sum4 + adcc4scaled;
+        sum5 = sum5 + adcc5scaled;
+    }
+    else if (numADCCcalls < 3001 ){
+        zero2 = sum2 / 2000;
+        zero3 = sum3 / 2000;
+        zero4 = sum4 / 2000;
+        zero5 = sum5 / 2000;
+    }
+    else {
+        adcc2result = AdccResultRegs.ADCRESULT0;
+        adcc3result = AdccResultRegs.ADCRESULT1;
+        adcc4result = AdccResultRegs.ADCRESULT2;
+        adcc5result = AdccResultRegs.ADCRESULT3;
+
+        adcc2scaled = adcc2result*(3.0/4095.0)-zero2;
+        adcc3scaled = adcc3result*(3.0/4095.0)-zero3;
+        adcc4scaled = adcc4result*(3.0/4095.0)-zero4;
+        adcc5scaled = adcc5result*(3.0/4095.0)-zero5;
+
+        adcc2degs = 400.0*adcc2scaled;
+        adcc3degs = 100.0*adcc3scaled;
+        adcc4degs = 100.0*adcc4scaled;
+        adcc5degs = 400.0*adcc5scaled;
+    }
 
 
     AdccRegs.ADCINTFLGCLR.bit.ADCINT1 = 1; //clear interrupt flag
     PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;
+
+    numADCCcalls++;
 }
