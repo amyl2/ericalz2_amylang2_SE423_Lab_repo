@@ -41,6 +41,7 @@ uint32_t numSWIcalls = 0;
 extern uint32_t numRXA;
 uint16_t UARTPrint = 0;
 int32_t adcdCount = 0;
+int32_t numADCCcalls = 0;
 
 // Other Variables
 int16_t adcd0result = 0;
@@ -60,6 +61,14 @@ float adcc2degs = 0;
 float adcc3degs = 0;
 float adcc4degs = 0;
 float adcc5degs = 0;
+float sum2 = 0.0;
+float sum3 = 0.0;
+float sum4 = 0.0;
+float sum5 = 0.0;
+float zero2 = 0.0;
+float zero3 = 0.0;
+float zero4 = 0.0;
+float zero5 = 0.0;
 
 //xk is the current ADC reading, xk_1 is the ADC reading one millisecond ago, xk_2 two milliseconds ago, etc
 float xk = 0;
@@ -580,6 +589,10 @@ __interrupt void ADCD_ISR (void)
 }
 
 __interrupt void ADCC_ISR (void) {
+<<<<<<< HEAD
+=======
+//    // Unzeroed readings
+>>>>>>> 7cb17224c4cf8d496c0b535a70e3379942e241f9
 //    adcc2result = AdccResultRegs.ADCRESULT0;
 //    adcc3result = AdccResultRegs.ADCRESULT1;
 //    adcc4result = AdccResultRegs.ADCRESULT2;
@@ -649,6 +662,8 @@ __interrupt void ADCC_ISR (void) {
 
     AdccRegs.ADCINTFLGCLR.bit.ADCINT1 = 1; //clear interrupt flag
     PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;
+
+    numADCCcalls++;
 }
 
 //adcb pie interrupt
