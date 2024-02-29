@@ -33,6 +33,7 @@ __interrupt void cpu_timer2_isr(void);
 __interrupt void SWI_isr(void);
 __interrupt void ADCD_ISR(void);
 __interrupt void ADCC_ISR (void);
+__interrupt void ADCB_ISR (void);
 
 // Count variables
 uint32_t numTimer0calls = 0;
@@ -48,11 +49,13 @@ int16_t adcc2result = 0;
 int16_t adcc3result = 0;
 int16_t adcc4result = 0;
 int16_t adcc5result = 0;
+int16_t adcb4result = 0;
 float adcd0scaled = 0;
 float adcc2scaled = 0;
 float adcc3scaled = 0;
 float adcc4scaled = 0;
 float adcc5scaled = 0;
+float adcb4scaled = 0;
 float adcc2degs = 0;
 float adcc3degs = 0;
 float adcc4degs = 0;
@@ -227,6 +230,11 @@ void main(void)
     GPIO_SetupPinOptions(2, GPIO_OUTPUT, GPIO_PUSHPULL);
     GpioDataRegs.GPACLEAR.bit.GPIO2 = 1;
 
+    // EPWM 7A  Setup
+    GPIO_SetupPinMux(12, GPIO_MUX_CPU1, 1);
+    GPIO_SetupPinOptions(2, GPIO_OUTPUT, GPIO_PUSHPULL);
+    GpioDataRegs.GPACLEAR.bit.GPIO2 = 1;
+
     // Clear all interrupts and initialize PIE vector table:
     // Disable CPU interrupts
     DINT;
@@ -265,6 +273,7 @@ void main(void)
     PieVectTable.SCID_TX_INT = &TXDINT_data_sent;
     PieVectTable.ADCD1_INT = &ADCD_ISR;
     PieVectTable.ADCC1_INT = &ADCC_ISR;
+    PieVectTable.ADCB1_INT = &ADCB_ISR;
 
     PieVectTable.EMIF_ERROR_INT = &SWI_isr;
     EDIS;    // This is needed to disable write to EALLOW protected registers
@@ -307,6 +316,21 @@ void main(void)
     EDIS;
 
     EALLOW;
+    EPwm7Regs.ETSEL.bit.SOCAEN = 0; // Disable SOC on A group
+    EPwm7Regs.TBCTL.bit.CTRMODE = 3; // freeze counter
+    EPwm7Regs.ETSEL.bit.SOCASEL = 2; // Select Event when counter equal to PRD
+    EPwm7Regs.ETPS.bit.SOCAPRD = 1; // Generate pulse on 1st event (“pulse” is the same as “trigger”)
+    EPwm7Regs.TBCTR = 0x0; // Clear counter
+    EPwm7Regs.TBPHS.bit.TBPHS = 0x0000; // Phase is 0
+    EPwm7Regs.TBCTL.bit.PHSEN = 0; // Disable phase loading
+    EPwm7Regs.TBCTL.bit.CLKDIV = 0; // divide by 1 50Mhz Clock
+    EPwm7Regs.TBPRD = 5000; // Set Period to 1ms sample. Input clock is 50MHz.
+    // Notice here that we are not setting CMPA or CMPB because we are not using the PWM signal
+    EPwm7Regs.ETSEL.bit.SOCAEN = 1; //enable SOCA
+    EPwm7Regs.TBCTL.bit.CTRMODE = 0; //unfreeze, and enter up count mode
+    EDIS;
+
+    EALLOW;
     //write configurations for all ADCs ADCA, ADCB, ADCC, ADCD
     AdcaRegs.ADCCTL2.bit.PRESCALE = 6; //set ADCCLK divider to /4
     AdcbRegs.ADCCTL2.bit.PRESCALE = 6; //set ADCCLK divider to /4
@@ -342,15 +366,15 @@ void main(void)
 //    AdcaRegs.ADCINTSEL1N2.bit.INT1E = 1; //enable INT1 flag
 //    AdcaRegs.ADCINTFLGCLR.bit.ADCINT1 = 1; //make sure INT1 flag is cleared
     //ADCB Microphone is connected to ADCINB4
-    //AdcbRegs.ADCSOC0CTL.bit.CHSEL = ???; //SOC0 will convert Channel you choose Does not have to be B0
-    //AdcbRegs.ADCSOC0CTL.bit.ACQPS = 99; //sample window is acqps + 1 SYSCLK cycles = 500ns
-    //AdcbRegs.ADCSOC0CTL.bit.TRIGSEL = ???;// EPWM7 ADCSOCA or another trigger you choose will trigger SOC0
-    //AdcbRegs.ADCSOC1CTL.bit.CHSEL = ???; //SOC1 will convert Channel you choose Does not have to be B1
-    //AdcbRegs.ADCSOC1CTL.bit.ACQPS = 99; //sample window is acqps + 1 SYSCLK cycles = 500ns
-    //AdcbRegs.ADCSOC1CTL.bit.TRIGSEL = ???;// EPWM7 ADCSOCA or another trigger you choose will trigger SOC1
-    //AdcbRegs.ADCINTSEL1N2.bit.INT1SEL = ???; //set to last SOC that is converted and it will set INT1 flag ADCB1
-    //AdcbRegs.ADCINTSEL1N2.bit.INT1E = 1; //enable INT1 flag
-    //AdcbRegs.ADCINTFLGCLR.bit.ADCINT1 = 1; //make sure INT1 flag is cleared
+    AdcbRegs.ADCSOC0CTL.bit.CHSEL = 4; //SOC0 will convert Channel you choose Does not have to be B0
+    AdcbRegs.ADCSOC0CTL.bit.ACQPS = 99; //sample window is acqps + 1 SYSCLK cycles = 500ns
+    AdcbRegs.ADCSOC0CTL.bit.TRIGSEL = 17;// EPWM7 ADCSOCA or another trigger you choose will trigger SOC0
+//    AdcbRegs.ADCSOC1CTL.bit.CHSEL = ???; //SOC1 will convert Channel you choose Does not have to be B1
+//    AdcbRegs.ADCSOC1CTL.bit.ACQPS = 99; //sample window is acqps + 1 SYSCLK cycles = 500ns
+//    AdcbRegs.ADCSOC1CTL.bit.TRIGSEL = ???;// EPWM7 ADCSOCA or another trigger you choose will trigger SOC1
+    AdcbRegs.ADCINTSEL1N2.bit.INT1SEL = 0; //set to last SOC that is converted and it will set INT1 flag ADCB1
+    AdcbRegs.ADCINTSEL1N2.bit.INT1E = 1; //enable INT1 flag
+    AdcbRegs.ADCINTFLGCLR.bit.ADCINT1 = 1; //make sure INT1 flag is cleared
     //ADCC
     AdccRegs.ADCSOC0CTL.bit.CHSEL = 2; //SOC0 will convert Channel you choose Does not have to be B0
     AdccRegs.ADCSOC0CTL.bit.ACQPS = 99; //sample window is acqps + 1 SYSCLK cycles = 500ns
@@ -414,6 +438,8 @@ void main(void)
     PieCtrlRegs.PIEIER1.bit.INTx6 = 1;
     // Enable ADCC1
     PieCtrlRegs.PIEIER1.bit.INTx3 = 1;
+    // Enable ADCB1
+    PieCtrlRegs.PIEIER1.bit.INTx2 = 1;
 
 	
     // Enable global Interrupts and higher priority real-time debug events
@@ -538,8 +564,8 @@ __interrupt void ADCD_ISR (void)
 
     }
 
-    // Here write voltages value to DACA
-    setDACA(yk);
+    // Here write voltages value to DACA commented out for Exercise 4
+//    setDACA(yk);
 
     // Part 1, set up on the oscilloscope
 //    // Here write voltages value to DACA
@@ -554,22 +580,86 @@ __interrupt void ADCD_ISR (void)
 }
 
 __interrupt void ADCC_ISR (void) {
-    adcc2result = AdccResultRegs.ADCRESULT0;
-    adcc3result = AdccResultRegs.ADCRESULT1;
-    adcc4result = AdccResultRegs.ADCRESULT2;
-    adcc5result = AdccResultRegs.ADCRESULT3;
+//    adcc2result = AdccResultRegs.ADCRESULT0;
+//    adcc3result = AdccResultRegs.ADCRESULT1;
+//    adcc4result = AdccResultRegs.ADCRESULT2;
+//    adcc5result = AdccResultRegs.ADCRESULT3;
+//
+//    adcc2scaled = adcc2result*(3.0/4095.0);
+//    adcc3scaled = adcc3result*(3.0/4095.0);
+//    adcc4scaled = adcc4result*(3.0/4095.0);
+//    adcc5scaled = adcc5result*(3.0/4095.0);
+//
+//    adcc2degs = 400.0*adcc2scaled-492.0;
+//    adcc3degs = 100.0*adcc3scaled-123.0;
+//    adcc4degs = 100.0*adcc4scaled-123.0;
+//    adcc5degs = 400.0*adcc5scaled-492.0;
 
-    adcc2scaled = adcc2result*(3.0/4095.0);
-    adcc3scaled = adcc3result*(3.0/4095.0);
-    adcc4scaled = adcc4result*(3.0/4095.0);
-    adcc5scaled = adcc5result*(3.0/4095.0);
+    // Exercise 3
+    if ( numADCCcalls <= 1000 ){
+        adcc2result = AdccResultRegs.ADCRESULT0;
+        adcc3result = AdccResultRegs.ADCRESULT1;
+        adcc4result = AdccResultRegs.ADCRESULT2;
+        adcc5result = AdccResultRegs.ADCRESULT3;
 
-    adcc2degs = 400.0*adcc2scaled-492.0;
-    adcc3degs = 100.0*adcc3scaled-123.0;
-    adcc4degs = 100.0*adcc4scaled-123.0;
-    adcc5degs = 400.0*adcc5scaled-492.0;
+        adcc2scaled = adcc2result*(3.0/4095.0);
+        adcc3scaled = adcc3result*(3.0/4095.0);
+        adcc4scaled = adcc4result*(3.0/4095.0);
+        adcc5scaled = adcc5result*(3.0/4095.0);
+    }
+    else if ( numADCCcalls < 3000 ){
+        adcc2result = AdccResultRegs.ADCRESULT0;
+        adcc3result = AdccResultRegs.ADCRESULT1;
+        adcc4result = AdccResultRegs.ADCRESULT2;
+        adcc5result = AdccResultRegs.ADCRESULT3;
+
+        adcc2scaled = adcc2result*(3.0/4095.0);
+        adcc3scaled = adcc3result*(3.0/4095.0);
+        adcc4scaled = adcc4result*(3.0/4095.0);
+        adcc5scaled = adcc5result*(3.0/4095.0);
+
+        sum2 = sum2 + adcc2scaled;
+        sum3 = sum3 + adcc3scaled;
+        sum4 = sum4 + adcc4scaled;
+        sum5 = sum5 + adcc5scaled;
+    }
+    else if (numADCCcalls < 3001 ){
+        zero2 = sum2 / 2000;
+        zero3 = sum3 / 2000;
+        zero4 = sum4 / 2000;
+        zero5 = sum5 / 2000;
+    }
+    else {
+        adcc2result = AdccResultRegs.ADCRESULT0;
+        adcc3result = AdccResultRegs.ADCRESULT1;
+        adcc4result = AdccResultRegs.ADCRESULT2;
+        adcc5result = AdccResultRegs.ADCRESULT3;
+
+        adcc2scaled = adcc2result*(3.0/4095.0)-zero2;
+        adcc3scaled = adcc3result*(3.0/4095.0)-zero3;
+        adcc4scaled = adcc4result*(3.0/4095.0)-zero4;
+        adcc5scaled = adcc5result*(3.0/4095.0)-zero5;
+
+        adcc2degs = 400.0*adcc2scaled;
+        adcc3degs = 100.0*adcc3scaled;
+        adcc4degs = 100.0*adcc4scaled;
+        adcc5degs = 400.0*adcc5scaled;
+    }
 
 
     AdccRegs.ADCINTFLGCLR.bit.ADCINT1 = 1; //clear interrupt flag
     PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;
+}
+
+//adcb pie interrupt
+__interrupt void ADCB_ISR (void) {
+    adcb4result = AdcbResultRegs.ADCRESULT0;
+
+    adcb4scaled = adcb4result*(3.0/4095.0);
+
+    setDACA(adcb4scaled);
+
+    AdcbRegs.ADCINTFLGCLR.bit.ADCINT1 = 1; //clear interrupt flag
+    PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;
+
 }
